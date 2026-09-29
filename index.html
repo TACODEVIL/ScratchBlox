@@ -3,22 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ScratchBlox 3D</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>ScratchBlox 3D with Three.js</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
+    canvas { display: block; }
+    #hud { position: fixed; bottom: 20px; left: 20px; background: rgba(255,255,255,0.9); padding: 12px 16px; border: 2px solid #3c6d9a; font-size: 13px; line-height: 1.6; z-index: 10; }
+    #topbar { position: fixed; top: 0; left: 0; right: 0; height: 52px; padding: 12px 20px; background: #3c6d9a; border-bottom: 3px solid #244b73; color: white; z-index: 10; }
+    #topbar b { font-size: 24px; margin-right: 18px; }
+    #topbar span { color: #dfeefb; }
+  </style>
 </head>
 <body>
   <div id="topbar">
     <b>ScratchBlox 3D</b>
-    <span>isometric block world</span>
+    <span>Three.js real 3D building</span>
   </div>
-
-  <canvas id="game" width="1280" height="720"></canvas>
-
+  <canvas id="game"></canvas>
   <div id="hud">
-    <strong>ScratchBlox 3D</strong>
-    <span>WASD move • Space climb • B place • V remove • R reset</span>
+    <strong>ScratchBlox 3D</strong><br>
+    WASD move • Space/Shift up/down • Click place • Right-click remove • 1-5 color • R reset
   </div>
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="game-3d.js"></script>
 </body>
 </html>
