@@ -1,8 +1,38 @@
 * { box-sizing: border-box; }
-body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: Arial, sans-serif; }
-canvas { display: block; width: 100vw; height: 100vh; }
-#topbar { position: fixed; top: 0; left: 0; right: 0; height: 48px; padding: 12px 22px; color: white; background: #3b6d9b; border-bottom: 3px solid #244a70; z-index: 100; font-size: 18px; }
-#topbar b { font-size: 22px; margin-right: 18px; }
-#topbar span { color: #d6e7f6; font-size: 14px; }
-#help { position: fixed; bottom: 0; left: 0; right: 0; padding: 14px 22px; background: rgba(59, 109, 155, 0.9); border-top: 2px solid #244a70; font-size: 13px; z-index: 100; }
-canvas { margin-top: 48px; }
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #9ad1ff 0%, #d9f1ff 100%);
+  color: #19324d;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+#topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  padding: 12px 20px;
+  background: #3c6d9a;
+  border-bottom: 3px solid #244b73;
+  color: white;
+  z-index: 10;
+}
+#topbar b { font-size: 24px; margin-right: 18px; }
+#topbar span { color: #dfeefb; }
+#game {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  background: #9ad1ff;
+  image-rendering: pixelated;
+}
+#hud {
+  position: fixed;
+  left: 20px;
+  bottom: 16px;
+  background: rgba(255,255,255,0.7);
+  border: 2px solid #627d95;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 4px 4px rgba(88, 118, 146, 0.3);
+}

@@ -1,15 +1,24 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ScratchBlox 3D</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="topbar"><b>ScratchBlox 3D</b><span>2007 classic building mode</span></div>
-  <canvas id="game"></canvas>
-  <div id="help">WASD: move &nbsp; Space/Shift: up/down &nbsp; Mouse: look &nbsp; Click: build &nbsp; Right-click: delete &nbsp; R: reset</div>
-  <script type="module" src="game-3d.js"></script>
+  <div id="topbar">
+    <b>ScratchBlox 3D</b>
+    <span>isometric block world</span>
+  </div>
+
+  <canvas id="game" width="1280" height="720"></canvas>
+
+  <div id="hud">
+    <strong>ScratchBlox 3D</strong>
+    <span>WASD move • Space climb • B place • V remove • R reset</span>
+  </div>
+
+  <script src="game-3d.js"></script>
 </body>
 </html>

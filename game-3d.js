@@ -1,270 +1,258 @@
-// ScratchBlox 3D - Simple Three.js implementation optimized for js2scratch conversion
-// Avoids modules, keeps code linear and compatible with Scratch block structure
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
 
-var canvas = document.getElementById('game');
-var ctx = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+const colors = ['#d94b43', '#4b8ed9', '#55aa5a', '#e4b83b', '#9b63bd'];
+const BLOCK = 24;
+const HALF = BLOCK / 2;
+let selectedColor = 0;
 
-// Resize canvas
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight - 48;
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
+const world = {
+  width: 30,
+  depth: 30,
+  maxHeight: 5,
+  blocks: []
+};
 
-// Math utilities
-function Vector3(x, y, z) {
-  return { x: x || 0, y: y || 0, z: z || 0 };
-}
+const player = {
+  x: 0,
+  y: 1,
+  z: 0,
+  vx: 0,
+  vz: 0,
+  color: '#f8d494'
+};
 
-function addVector3(a, b) {
-  return Vector3(a.x + b.x, a.y + b.y, a.z + b.z);
-}
+const camera = {
+  x: 0,
+  y: 0,
+  z: 0
+};
 
-function subtractVector3(a, b) {
-  return Vector3(a.x - b.x, a.y - b.y, a.z - b.z);
-}
+const keys = {};
 
-function multiplyVector3(v, s) {
-  return Vector3(v.x * s, v.y * s, v.z * s);
-}
-
-function normalizeVector3(v) {
-  var len = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-  if (len === 0) return Vector3(0, 0, 0);
-  return Vector3(v.x / len, v.y / len, v.z / len);
-}
-
-function Matrix4() {
-  return [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1
-  ];
+function keyName(e) {
+  return e.key.toLowerCase();
 }
 
-function multiplyMatrices(a, b) {
-  var result = Array(16);
-  for (var i = 0; i < 4; i++) {
-    for (var j = 0; j < 4; j++) {
-      result[i * 4 + j] = 0;
-      for (var k = 0; k < 4; k++) {
-        result[i * 4 + j] += a[i * 4 + k] * b[k * 4 + j];
-      }
+function resetWorld() {
+  world.blocks = [];
+  const groundColor = '#7aa466';
+
+  for (let x = -10; x <= 10; x++) {
+    for (let z = -10; z <= 10; z++) {
+      world.blocks.push({ x, y: 0, z, color: groundColor });
     }
   }
-  return result;
-}
 
-// Scene setup
-var scene = [];
-var camera = {
-  position: Vector3(0, 25, 50),
-  direction: Vector3(0, -0.3, -1),
-  up: Vector3(0, 1, 0),
-  fov: 50,
-  aspect: canvas.width / canvas.height,
-  near: 0.1,
-  far: 1000
-};
+  addBlock(0, 1, 0, colors[1]);
+  addBlock(1, 1, 0, colors[2]);
+  addBlock(0, 2, 0, colors[3]);
+  addBlock(-2, 1, 0, colors[0]);
+  addBlock(0, 1, -2, colors[4]);
 
-var player = {
-  position: Vector3(0, 25, 50),
-  velocity: Vector3(0, 0, 0),
-  yaw: 0,
-  pitch: 0
-};
-
-var blocks = [];
-var selectedColor = 0;
-var colors = ['#d94b43', '#4b8ed9', '#55aa5a', '#e4b83b', '#9b63bd'];
-var keys = {};
-var mouseX = 0, mouseY = 0;
-var pointerLocked = false;
-
-// Cube mesh data (8 vertices, 12 triangles)
-function createBoxGeometry(w, h, d) {
-  var hw = w / 2, hh = h / 2, hd = d / 2;
-  var vertices = [
-    [-hw, -hh, -hd], [hw, -hh, -hd], [hw, hh, -hd], [-hw, hh, -hd],
-    [-hw, -hh, hd], [hw, -hh, hd], [hw, hh, hd], [-hw, hh, hd]
-  ];
-  var indices = [
-    0, 1, 2, 2, 3, 0, // front
-    5, 4, 7, 7, 6, 5, // back
-    4, 5, 1, 1, 0, 4, // bottom
-    3, 2, 6, 6, 7, 3, // top
-    4, 0, 3, 3, 7, 4, // left
-    1, 5, 6, 6, 2, 1  // right
-  ];
-  return { vertices: vertices, indices: indices };
+  player.x = 0;
+  player.y = 1;
+  player.z = 4;
+  camera.x = 0;
+  camera.z = 0;
 }
 
 function addBlock(x, y, z, color) {
-  blocks.push({ x: x, y: y, z: z, color: color });
+  world.blocks.push({ x, y, z, color: color || colors[selectedColor] });
 }
 
 function removeBlock(x, y, z) {
-  var i;
-  for (i = 0; i < blocks.length; i++) {
-    if (blocks[i].x === x && blocks[i].y === y && blocks[i].z === z) {
-      blocks.splice(i, 1);
+  for (let i = world.blocks.length - 1; i >= 0; i--) {
+    const b = world.blocks[i];
+    if (b.x === x && b.y === y && b.z === z) {
+      world.blocks.splice(i, 1);
       return;
     }
   }
 }
 
-function resetWorld() {
-  blocks = [];
-  var x, z;
-  // Ground plane
-  for (x = -60; x <= 60; x += 30) {
-    for (z = -60; z <= 60; z += 30) {
-      addBlock(x, -30, z, '#69513c');
+function project(x, y, z) {
+  const px = (x - z) * HALF;
+  const py = (x + z) * (HALF * 0.5) - y * BLOCK;
+  return {
+    x: canvas.width * 0.5 + px - camera.x * HALF,
+    y: canvas.height * 0.6 + py - camera.z * (HALF * 0.6),
+    depth: x + z + y * 0.5
+  };
+}
+
+function sortBlocks() {
+  world.blocks.sort((a, b) => {
+    const pa = project(a.x, a.y, a.z).depth;
+    const pb = project(b.x, b.y, b.z).depth;
+    return pa - pb;
+  });
+}
+
+function drawCube(block) {
+  const points = [
+    { x: block.x, y: block.y, z: block.z },
+    { x: block.x + 1, y: block.y, z: block.z },
+    { x: block.x + 1, y: block.y, z: block.z + 1 },
+    { x: block.x, y: block.y, z: block.z + 1 },
+    { x: block.x, y: block.y + 1, z: block.z },
+    { x: block.x + 1, y: block.y + 1, z: block.z },
+    { x: block.x + 1, y: block.y + 1, z: block.z + 1 },
+    { x: block.x, y: block.y + 1, z: block.z + 1 }
+  ];
+
+  const p = points.map(pt => project(pt.x, pt.y, pt.z));
+  const top = [p[4], p[5], p[6], p[7]];
+  const left = [p[0], p[3], p[7], p[4]];
+  const right = [p[1], p[2], p[6], p[5]];
+  const front = [p[0], p[1], p[5], p[4]];
+
+  drawFace(top, block.color, '#dfefff');
+  drawFace(left, shadeColor(block.color, -18), '#cfe5ff');
+  drawFace(right, shadeColor(block.color, -28), '#d0d8e3');
+  drawFace(front, shadeColor(block.color, -10), '#eaf7ff');
+}
+
+function drawFace(points, fill, stroke) {
+  if (points.length < 3) return;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function shadeColor(hex, percent) {
+  const num = parseInt(hex.slice(1), 16);
+  let r = (num >> 16) + percent;
+  let g = ((num >> 8) & 0x00FF) + percent;
+  let b = (num & 0x0000FF) + percent;
+  r = Math.max(0, Math.min(255, r));
+  g = Math.max(0, Math.min(255, g));
+  b = Math.max(0, Math.min(255, b));
+  return '#' + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
+}
+
+function drawPlayer() {
+  const p = project(player.x, player.y, player.z);
+  ctx.fillStyle = player.color;
+  ctx.fillRect(p.x - 6, p.y - 18, 12, 18);
+  ctx.fillStyle = '#173b62';
+  ctx.fillRect(p.x - 10, p.y - 8, 20, 8);
+}
+
+function updatePlayer() {
+  const move = { x: 0, z: 0 };
+
+  if (keys.w || keys.arrowup) move.z -= 1;
+  if (keys.s || keys.arrowdown) move.z += 1;
+  if (keys.a || keys.arrowleft) move.x -= 1;
+  if (keys.d || keys.arrowright) move.x += 1;
+
+  if (move.x !== 0 || move.z !== 0) {
+    const length = Math.hypot(move.x, move.z) || 1;
+    player.x += (move.x / length) * 0.25;
+    player.z += (move.z / length) * 0.25;
+  }
+
+  if (keys[' ']) player.y += 0.2;
+  if (keys.shift) player.y -= 0.2;
+  if (player.y < 1) player.y = 1;
+
+  camera.x = player.x;
+  camera.z = player.z;
+}
+
+function drawGround() {
+  const gridColor = '#98c77d';
+  for (let x = -12; x <= 12; x++) {
+    for (let z = -12; z <= 12; z++) {
+      const p1 = project(x, 0, z);
+      const p2 = project(x + 1, 0, z);
+      const p3 = project(x + 1, 0, z + 1);
+      const p4 = project(x, 0, z + 1);
+
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.lineTo(p4.x, p4.y);
+      ctx.closePath();
+      ctx.fillStyle = gridColor;
+      ctx.fill();
     }
   }
-  // Sample structures
-  addBlock(-30, 0, 0, colors[1]);
-  addBlock(0, 0, 0, colors[1]);
-  addBlock(30, 0, 0, colors[0]);
-  addBlock(0, 30, 0, colors[2]);
-  player.position = Vector3(0, 40, 80);
-  player.velocity = Vector3(0, 0, 0);
 }
 
-function updateCamera() {
-  camera.position = player.position;
-  var cosYaw = Math.cos(player.yaw);
-  var sinYaw = Math.sin(player.yaw);
-  var cosPitch = Math.cos(player.pitch);
-  var sinPitch = Math.sin(player.pitch);
-  camera.direction = Vector3(
-    sinYaw * cosPitch,
-    -sinPitch,
-    -cosYaw * cosPitch
-  );
+function drawWorld() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#9ad1ff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawGround();
+  sortBlocks();
+  for (let i = 0; i < world.blocks.length; i++) drawCube(world.blocks[i]);
+  drawPlayer();
 }
 
-function update() {
-  // Movement
-  var moveDir = Vector3(0, 0, 0);
-  if (keys.w || keys.arrowup) moveDir.z -= 1;
-  if (keys.s || keys.arrowdown) moveDir.z += 1;
-  if (keys.a) moveDir.x -= 1;
-  if (keys.d) moveDir.x += 1;
-  
-  var cosYaw = Math.cos(player.yaw);
-  var sinYaw = Math.sin(player.yaw);
-  var actualMove = Vector3(
-    moveDir.x * cosYaw - moveDir.z * sinYaw,
-    0,
-    moveDir.x * sinYaw + moveDir.z * cosYaw
-  );
-  
-  actualMove = normalizeVector3(actualMove);
-  actualMove = multiplyVector3(actualMove, 0.3);
-  player.velocity.x += actualMove.x;
-  player.velocity.z += actualMove.z;
-  
-  if (keys.shift) player.velocity.y -= 0.3;
-  if (keys.' ') player.velocity.y += 0.3;
-  
-  player.velocity.y -= 0.2; // Gravity
-  player.velocity.x *= 0.9;
-  player.velocity.z *= 0.9;
-  
-  player.position = addVector3(player.position, player.velocity);
-  
-  // Collision with ground and blocks
-  if (player.position.y < -20) {
-    player.position.y = 40;
-    player.velocity = Vector3(0, 0, 0);
+function handleInput() {
+  if (keys.b) {
+    const bx = Math.round(player.x);
+    const by = Math.max(1, Math.round(player.y));
+    const bz = Math.round(player.z);
+    addBlock(bx, by, bz, colors[selectedColor]);
+    keys.b = false;
   }
-  
-  updateCamera();
-}
 
-function setup3DContext() {
-  ctx.clearColor(0.52, 0.74, 0.9, 1);
-  ctx.enable(ctx.DEPTH_TEST);
-  ctx.enable(ctx.CULL_FACE);
-  ctx.viewport(0, 0, canvas.width, canvas.height);
-}
-
-function drawScene() {
-  ctx.clear(ctx.COLOR_BUFFER_BIT | ctx.DEPTH_BUFFER_BIT);
-  
-  var i;
-  for (i = 0; i < blocks.length; i++) {
-    drawBlock(blocks[i]);
+  if (keys.v) {
+    const bx = Math.round(player.x);
+    const by = Math.max(1, Math.round(player.y));
+    const bz = Math.round(player.z);
+    removeBlock(bx, by, bz);
+    keys.v = false;
   }
+
+  if (keys.r) {
+    resetWorld();
+    keys.r = false;
+  }
+
+  if (keys['1']) selectedColor = 0;
+  if (keys['2']) selectedColor = 1;
+  if (keys['3']) selectedColor = 2;
+  if (keys['4']) selectedColor = 3;
+  if (keys['5']) selectedColor = 4;
 }
 
-function drawBlock(block) {
-  var geometry = createBoxGeometry(30, 30, 30);
-  var i, j;
-  var colorRGB = hexToRGB(block.color);
-  
-  // Project and draw (simplified for WebGL)
-  // This is a placeholder - full 3D rendering would require shader setup
+function frame() {
+  updatePlayer();
+  handleInput();
+  drawWorld();
+  requestAnimationFrame(frame);
 }
 
-function hexToRGB(hex) {
-  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? [parseInt(result[1], 16) / 255, parseInt(result[2], 16) / 255, parseInt(result[3], 16) / 255] : [1, 1, 1];
-}
-
-// Event handlers
-document.addEventListener('keydown', function(e) {
-  keys[e.key.toLowerCase()] = true;
-  if (e.key === 'r' || e.key === 'R') resetWorld();
-  if (e.key >= '1' && e.key <= '5') selectedColor = parseInt(e.key) - 1;
-});
-
-document.addEventListener('keyup', function(e) {
-  keys[e.key.toLowerCase()] = false;
-});
-
-document.addEventListener('mousemove', function(e) {
-  var sensitivity = 0.003;
-  player.yaw -= e.movementX * sensitivity;
-  player.pitch -= e.movementY * sensitivity;
-  player.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, player.pitch));
-});
-
-canvas.addEventListener('click', function() {
-  canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
-  canvas.requestPointerLock();
-});
-
-canvas.addEventListener('mousedown', function(e) {
-  if (e.button === 0) {
-    var targetPos = addVector3(camera.position, multiplyVector3(camera.direction, 50));
-    var gridX = Math.round(targetPos.x / 30) * 30;
-    var gridY = Math.round(targetPos.y / 30) * 30;
-    var gridZ = Math.round(targetPos.z / 30) * 30;
-    addBlock(gridX, gridY, gridZ, colors[selectedColor]);
-  } else if (e.button === 2) {
-    var targetPos = addVector3(camera.position, multiplyVector3(camera.direction, 50));
-    var gridX = Math.round(targetPos.x / 30) * 30;
-    var gridY = Math.round(targetPos.y / 30) * 30;
-    var gridZ = Math.round(targetPos.z / 30) * 30;
-    removeBlock(gridX, gridY, gridZ);
+window.addEventListener('keydown', (e) => {
+  const k = keyName(e);
+  keys[k] = true;
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) {
+    e.preventDefault();
   }
 });
 
-canvas.addEventListener('contextmenu', function(e) {
-  e.preventDefault();
+window.addEventListener('keyup', (e) => {
+  keys[keyName(e)] = false;
 });
 
-// Game loop
-function gameLoop() {
-  update();
-  drawScene();
-  requestAnimationFrame(gameLoop);
-}
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
 
-setup3DContext();
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 resetWorld();
-gameLoop();
+frame();
