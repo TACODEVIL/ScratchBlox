@@ -1,0 +1,17 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #c7d7e7; color: #273849; font-family: Arial, sans-serif; }
+#topbar { height: 48px; padding: 12px 22px; color: white; background: #3b6d9b; border-bottom: 3px solid #244a70; }
+#topbar b { font-size: 22px; margin-right: 18px; }
+#topbar span { color: #d6e7f6; }
+main { display: flex; gap: 14px; max-width: 1180px; margin: 18px auto; padding: 0 14px; }
+#game-panel { flex: 1; min-width: 0; }
+canvas { width: 100%; height: auto; display: block; background: #86bde2; border: 5px solid #365873; image-rendering: pixelated; cursor: crosshair; }
+#help { padding: 10px; background: #e8f0f7; border: 1px solid #9bb4c8; font-size: 13px; }
+aside { width: 230px; padding: 16px; background: #f4f4f4; border: 2px solid #8098aa; box-shadow: 3px 3px #a1b4c2; }
+h2 { margin-top: 0; color: #3b6d9b; }
+button, .color { border: 2px solid #687f90; background: #e1e8ed; padding: 8px; cursor: pointer; }
+button { width: 100%; margin: 12px 0; font-weight: bold; }
+button:hover, .color:hover, .color.selected { border-color: #d77b28; }
+#palette { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.color { height: 32px; padding: 0; }
+@media (max-width: 760px) { main { display: block; } aside { width: auto; margin-top: 14px; } }
